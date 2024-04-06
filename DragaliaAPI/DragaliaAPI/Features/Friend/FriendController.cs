@@ -1,15 +1,13 @@
-﻿using DragaliaAPI.Models.Generated;
+﻿using DragaliaAPI.Controllers;
+using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DragaliaAPI.Controllers.Dragalia;
+namespace DragaliaAPI.Features.Friend;
 
 [Route("friend")]
-[Consumes("application/octet-stream")]
-[Produces("application/octet-stream")]
-[ApiController]
 public class FriendController : DragaliaControllerBase
 {
     private readonly IHelperService helperService;

@@ -1,4 +1,4 @@
-﻿using DragaliaAPI.Controllers.Dragalia;
+﻿using DragaliaAPI.Features.Friend;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;

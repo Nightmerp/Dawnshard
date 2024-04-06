@@ -3,7 +3,7 @@
 namespace DragaliaAPI.Integration.Test.Dragalia;
 
 /// <summary>
-/// Tests <see cref="Controllers.Dragalia.FriendController"/>
+/// Tests <see cref="DragaliaAPI.Features.Friend.FriendController"/>
 /// </summary>
 public class FriendTest : TestFixture
 {
