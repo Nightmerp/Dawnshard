@@ -2,4 +2,9 @@
 
 namespace DragaliaAPI.Features.Friend;
 
-public interface IFriendRepository { }
+public interface IFriendRepository
+{
+    IQueryable<DbPlayerSupportChara> SupportChara { get; }
+
+    Task<DbPlayerSupportChara?> GetSupportCharaAsync();
+}
