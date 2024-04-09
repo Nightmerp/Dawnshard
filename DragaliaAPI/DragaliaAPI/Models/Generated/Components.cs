@@ -11114,15 +11114,6 @@ public partial class SettingSupport
     [Key("equip_dragon_key_id")]
     public ulong EquipDragonKeyId { get; set; }
 
-    [Key("equip_weapon_key_id")]
-    public ulong EquipWeaponKeyId { get; set; }
-
-    [Key("equip_amulet_key_id")]
-    public ulong EquipAmuletKeyId { get; set; }
-
-    [Key("equip_amulet_2_key_id")]
-    public ulong EquipAmulet2KeyId { get; set; }
-
     [Key("equip_weapon_body_id")]
     public WeaponBodies EquipWeaponBodyId { get; set; }
 
@@ -11153,9 +11144,6 @@ public partial class SettingSupport
     public SettingSupport(
         Charas charaId,
         ulong equipDragonKeyId,
-        ulong equipWeaponKeyId,
-        ulong equipAmuletKeyId,
-        ulong equipAmulet2KeyId,
         WeaponBodies equipWeaponBodyId,
         AbilityCrests equipCrestSlotType1CrestId1,
         AbilityCrests equipCrestSlotType1CrestId2,
@@ -11169,9 +11157,6 @@ public partial class SettingSupport
     {
         this.CharaId = charaId;
         this.EquipDragonKeyId = equipDragonKeyId;
-        this.EquipWeaponKeyId = equipWeaponKeyId;
-        this.EquipAmuletKeyId = equipAmuletKeyId;
-        this.EquipAmulet2KeyId = equipAmulet2KeyId;
         this.EquipWeaponBodyId = equipWeaponBodyId;
         this.EquipCrestSlotType1CrestId1 = equipCrestSlotType1CrestId1;
         this.EquipCrestSlotType1CrestId2 = equipCrestSlotType1CrestId2;

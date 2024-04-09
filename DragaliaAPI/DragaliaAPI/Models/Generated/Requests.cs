@@ -2265,15 +2265,6 @@ public partial class FriendSetSupportCharaRequest
     [Key("dragon_key_id")]
     public ulong DragonKeyId { get; set; }
 
-    [Key("weapon_key_id")]
-    public ulong WeaponKeyId { get; set; }
-
-    [Key("amulet_key_id")]
-    public ulong AmuletKeyId { get; set; }
-
-    [Key("amulet_2_key_id")]
-    public ulong Amulet2KeyId { get; set; }
-
     [Key("weapon_body_id")]
     public WeaponBodies WeaponBodyId { get; set; }
 
@@ -2304,9 +2295,6 @@ public partial class FriendSetSupportCharaRequest
     public FriendSetSupportCharaRequest(
         Charas charaId,
         ulong dragonKeyId,
-        ulong weaponKeyId,
-        ulong amuletKeyId,
-        ulong amulet2KeyId,
         WeaponBodies weaponBodyId,
         AbilityCrests crestSlotType1CrestId1,
         AbilityCrests crestSlotType1CrestId2,
@@ -2320,9 +2308,6 @@ public partial class FriendSetSupportCharaRequest
     {
         this.CharaId = charaId;
         this.DragonKeyId = dragonKeyId;
-        this.WeaponKeyId = weaponKeyId;
-        this.AmuletKeyId = amuletKeyId;
-        this.Amulet2KeyId = amulet2KeyId;
         this.WeaponBodyId = weaponBodyId;
         this.CrestSlotType1CrestId1 = crestSlotType1CrestId1;
         this.CrestSlotType1CrestId2 = crestSlotType1CrestId2;

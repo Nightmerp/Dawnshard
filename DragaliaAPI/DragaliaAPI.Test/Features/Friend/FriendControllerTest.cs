@@ -1,26 +1,44 @@
-﻿using DragaliaAPI.Features.Friend;
+﻿using AutoMapper;
+using DragaliaAPI.Controllers.Dragalia;
+using DragaliaAPI.Features.Friend;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
+using DragaliaAPI.Test.Utils;
 
-namespace DragaliaAPI.Test.Controllers;
+namespace DragaliaAPI.Test.Features.Friend;
 
 public class FriendControllerTest
 {
     private readonly FriendController friendController;
+    private readonly Mock<IFriendRepository> mockFriendRepository;
+    private readonly Mock<IFriendService> mockFriendService;
     private readonly Mock<IHelperService> mockHelperService;
     private readonly Mock<IBonusService> mockBonusService;
+    private readonly Mock<IUpdateDataService> mockUpdateDataService;
+    private readonly IMapper mapper;
 
     public FriendControllerTest()
     {
+        this.mockFriendRepository = new(MockBehavior.Strict);
+        this.mockFriendService = new(MockBehavior.Strict);
         this.mockHelperService = new(MockBehavior.Strict);
         this.mockBonusService = new(MockBehavior.Strict);
+        this.mockUpdateDataService = new(MockBehavior.Strict);
+
+        this.mapper = new MapperConfiguration(cfg =>
+            cfg.AddMaps(typeof(Program).Assembly)
+        ).CreateMapper();
 
         this.mockBonusService.Setup(x => x.GetBonusList()).ReturnsAsync(new FortBonusList());
 
         this.friendController = new FriendController(
+            mockFriendRepository.Object,
+            mockFriendService.Object,
             mockHelperService.Object,
-            mockBonusService.Object
+            mockBonusService.Object,
+            mockUpdateDataService.Object,
+            mapper
         );
 
         this.friendController.SetupMockContext();

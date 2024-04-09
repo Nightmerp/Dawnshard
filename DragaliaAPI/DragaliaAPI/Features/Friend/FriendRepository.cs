@@ -15,4 +15,21 @@ public class FriendRepository(ApiContext apiContext, IPlayerIdentityService play
     {
         return await apiContext.PlayerSupportCharas.FindAsync(playerIdentityService.ViewerId);
     }
+
+    public async Task AddOrUpdateSupportCharaAsync(DbPlayerSupportChara supportChara)
+    {
+        supportChara.ViewerId = playerIdentityService.ViewerId;
+        DbPlayerSupportChara? dbSupportChara = await GetSupportCharaAsync();
+
+        if (dbSupportChara == null)
+        {
+            await apiContext.PlayerSupportCharas.AddAsync(supportChara);
+        }
+        else
+        {
+            apiContext
+                .PlayerSupportCharas.Entry(dbSupportChara)
+                .CurrentValues.SetValues(supportChara);
+        }
+    }
 }

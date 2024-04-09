@@ -13,6 +13,7 @@ using DragaliaAPI.Features.Dungeon.Start;
 using DragaliaAPI.Features.Emblem;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Fort;
+using DragaliaAPI.Features.Friend;
 using DragaliaAPI.Features.Item;
 using DragaliaAPI.Features.Login;
 using DragaliaAPI.Features.Maintenance;
@@ -156,7 +157,10 @@ public static class ServiceConfiguration
             // Zena feature
             .AddScoped<IZenaService, ZenaService>()
             // Maintenance feature
-            .AddScoped<MaintenanceService>();
+            .AddScoped<MaintenanceService>()
+            // Friend feature
+            .AddScoped<IFriendRepository, FriendRepository>()
+            .AddScoped<IFriendService, FriendService>();
 
         services.AddScoped<IBlazorIdentityService, BlazorIdentityService>();
 
