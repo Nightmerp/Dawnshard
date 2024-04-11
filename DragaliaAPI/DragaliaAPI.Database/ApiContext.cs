@@ -135,6 +135,8 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
 
     public DbSet<DbPlayerSupportChara> PlayerSupportCharas { get; set; } = null!;
 
+    public DbSet<DbFriend> Friends { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
