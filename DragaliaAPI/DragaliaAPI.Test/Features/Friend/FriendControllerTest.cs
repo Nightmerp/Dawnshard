@@ -4,6 +4,7 @@ using DragaliaAPI.Features.Friend;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
+using DragaliaAPI.Shared.PlayerDetails;
 using DragaliaAPI.Test.Utils;
 
 namespace DragaliaAPI.Test.Features.Friend;
@@ -16,6 +17,7 @@ public class FriendControllerTest
     private readonly Mock<IHelperService> mockHelperService;
     private readonly Mock<IBonusService> mockBonusService;
     private readonly Mock<IUpdateDataService> mockUpdateDataService;
+    private readonly Mock<IPlayerIdentityService> mockPlayerIdentityService;
     private readonly IMapper mapper;
 
     public FriendControllerTest()
@@ -25,6 +27,7 @@ public class FriendControllerTest
         this.mockHelperService = new(MockBehavior.Strict);
         this.mockBonusService = new(MockBehavior.Strict);
         this.mockUpdateDataService = new(MockBehavior.Strict);
+        this.mockPlayerIdentityService = new(MockBehavior.Strict);
 
         this.mapper = new MapperConfiguration(cfg =>
             cfg.AddMaps(typeof(Program).Assembly)
@@ -38,6 +41,7 @@ public class FriendControllerTest
             mockHelperService.Object,
             mockBonusService.Object,
             mockUpdateDataService.Object,
+            mockPlayerIdentityService.Object,
             mapper
         );
 

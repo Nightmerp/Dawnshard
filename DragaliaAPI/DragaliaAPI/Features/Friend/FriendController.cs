@@ -5,6 +5,7 @@ using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DragaliaAPI.Features.Friend;
@@ -16,6 +17,7 @@ public class FriendController(
     IHelperService helperService,
     IBonusService bonusService,
     IUpdateDataService updateDataService,
+    IPlayerIdentityService playerIdentityService,
     IMapper mapper
 ) : DragaliaControllerBase
 {
@@ -76,13 +78,45 @@ public class FriendController(
     }
 
     [HttpPost("friend_index")]
-    public DragaliaResult<FriendFriendIndexResponse> FriendIndex() =>
-        new FriendFriendIndexResponse()
+    public DragaliaResult<FriendFriendIndexResponse> FriendIndex()
+    {
+        IQueryable<DbFriend> friendStatuses = friendRepository.Friends.Where(x =>
+            x.ViewerId1 == playerIdentityService.ViewerId
+            || x.ViewerId2 == playerIdentityService.ViewerId
+        );
+
+        IQueryable<DbFriend> friends = friendStatuses.Where(x =>
+            x.FriendStatus == FriendStatus.Friend
+        );
+
+        UpdateDataList updateDataList =
+            new()
+            {
+                FriendNotice = new()
+                {
+                    ApplyNewCount = friendStatuses
+                        .Where(x =>
+                            (x.ViewerId1 == playerIdentityService.ViewerId && !x.ViewerID1Viewed)
+                            || (x.ViewerId2 == playerIdentityService.ViewerId && !x.ViewerID2Viewed)
+                        )
+                        .Count(),
+
+                    FriendNewCount = friends
+                        .Where(x =>
+                            (x.ViewerId1 == playerIdentityService.ViewerId && !x.ViewerID1Viewed)
+                            || (x.ViewerId2 == playerIdentityService.ViewerId && !x.ViewerID2Viewed)
+                        )
+                        .Count()
+                }
+            };
+
+        return new FriendFriendIndexResponse()
         {
-            FriendCount = 0,
+            FriendCount = friends.Count(),
             EntityResult = new(),
-            UpdateDataList = new()
+            UpdateDataList = updateDataList
         };
+    }
 
     [HttpPost("friend_list")]
     public DragaliaResult<FriendFriendListResponse> FriendList() =>

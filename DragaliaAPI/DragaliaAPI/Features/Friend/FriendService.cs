@@ -2,10 +2,15 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.PlayerDetails;
 
 namespace DragaliaAPI.Features.Friend;
 
-public class FriendService(IFriendRepository friendRepository, IMapper mapper) : IFriendService
+public class FriendService(
+    IFriendRepository friendRepository,
+    IPlayerIdentityService playerIdentityService,
+    IMapper mapper
+) : IFriendService
 {
     public async Task<SettingSupport> GetSupportChara()
     {
