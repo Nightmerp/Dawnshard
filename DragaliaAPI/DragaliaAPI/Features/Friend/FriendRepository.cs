@@ -11,6 +11,12 @@ public class FriendRepository(ApiContext apiContext, IPlayerIdentityService play
     public IQueryable<DbPlayerSupportChara> SupportChara =>
         apiContext.PlayerSupportCharas.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
+    public IQueryable<DbFriend> Friends =>
+        apiContext.Friends.Where(x =>
+            x.ViewerId1 == playerIdentityService.ViewerId
+            || x.ViewerId2 == playerIdentityService.ViewerId
+        );
+
     public async Task<DbPlayerSupportChara?> GetSupportCharaAsync()
     {
         return await apiContext.PlayerSupportCharas.FindAsync(playerIdentityService.ViewerId);
@@ -31,5 +37,29 @@ public class FriendRepository(ApiContext apiContext, IPlayerIdentityService play
                 .PlayerSupportCharas.Entry(dbSupportChara)
                 .CurrentValues.SetValues(supportChara);
         }
+    }
+
+    public async Task<DbFriend?> GetFriendAsync(long viewerID1, long viewerID2)
+    {
+        return await apiContext.Friends.FindAsync(viewerID1, viewerID2);
+    }
+
+    public async Task AddOrUpdateFriend(DbFriend friend)
+    {
+        DbFriend? dbFriend = await GetFriendAsync(friend.ViewerId1, friend.ViewerId2);
+
+        if (dbFriend == null)
+        {
+            await apiContext.Friends.AddAsync(friend);
+        }
+        else
+        {
+            apiContext.Friends.Entry(dbFriend).CurrentValues.SetValues(friend);
+        }
+    }
+
+    public void RemoveFriend(DbFriend friend)
+    {
+        apiContext.Friends.Remove(friend);
     }
 }
