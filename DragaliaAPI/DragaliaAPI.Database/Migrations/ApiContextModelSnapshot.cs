@@ -17,28 +17,10 @@ namespace DragaliaAPI.Database.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.3")
+                .HasAnnotation("ProductVersion", "8.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("DragaliaAPI.Database.DbTimeAttackClear", b =>
-                {
-                    b.Property<string>("GameId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("QuestId")
-                        .HasColumnType("integer");
-
-                    b.Property<float>("Time")
-                        .HasColumnType("real");
-
-                    b.HasKey("GameId");
-
-                    b.HasIndex("QuestId");
-
-                    b.ToTable("TimeAttackClears");
-                });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbAbilityCrest", b =>
                 {
@@ -87,7 +69,8 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Property<string>("AbilityCrestSetName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<int>("CrestSlotType1CrestId1")
                         .HasColumnType("integer");
@@ -302,20 +285,44 @@ namespace DragaliaAPI.Database.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("BodyImagePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTimeOffset>("Date")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<string>("HeaderImagePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<string>("Headline")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
-                    b.Property<DateTimeOffset>("Time")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<bool>("Hidden")
+                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
                     b.ToTable("NewsItems");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 20000,
+                            BodyImagePath = "/dawnshard/news/mg-endeavours.webp",
+                            Date = new DateTimeOffset(new DateTime(2024, 6, 2, 16, 7, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 1, 0, 0, 0)),
+                            Description = "The below infographic shows the endeavour rewards available for the progressing the Mercurial Gauntlet.",
+                            Headline = "Mercurial Gauntlet Endeavour Rewards",
+                            Hidden = true
+                        });
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbParty", b =>
@@ -353,7 +360,8 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPartyUnit", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<int>("CharaId")
                         .HasColumnType("integer");
@@ -473,13 +481,12 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("FreeSummonAvailable");
 
-                    b.Property<byte>("PityRate")
-                        .HasColumnType("smallint")
-                        .HasColumnName("Pity");
-
                     b.Property<int>("SummonCount")
                         .HasColumnType("integer")
                         .HasColumnName("SummonCount");
+
+                    b.Property<int>("SummonCountSinceLastFiveStar")
+                        .HasColumnType("integer");
 
                     b.Property<int>("SummonPoints")
                         .HasColumnType("integer")
@@ -598,6 +605,22 @@ namespace DragaliaAPI.Database.Migrations
                     b.HasKey("ViewerId", "CharaId");
 
                     b.ToTable("PlayerCharaData");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDiamondData", b =>
+                {
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("FreeDiamond")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PaidDiamond")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ViewerId");
+
+                    b.ToTable("PlayerDiamondData");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDmodeChara", b =>
@@ -1741,7 +1764,8 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Property<string>("UnitSetName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.HasKey("ViewerId", "CharaId", "UnitSetNo");
 
@@ -1824,10 +1848,30 @@ namespace DragaliaAPI.Database.Migrations
                     b.ToTable("PlayerTalismans");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackClear", b =>
+                {
+                    b.Property<string>("GameId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("QuestId")
+                        .HasColumnType("integer");
+
+                    b.Property<float>("Time")
+                        .HasColumnType("real");
+
+                    b.HasKey("GameId");
+
+                    b.HasIndex("QuestId");
+
+                    b.ToTable("TimeAttackClears");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackClearUnit", b =>
                 {
                     b.Property<string>("GameId")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<long>("ViewerId")
                         .HasColumnType("bigint");
@@ -1897,7 +1941,8 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackPlayer", b =>
                 {
                     b.Property<string>("GameId")
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<long>("ViewerId")
                         .HasColumnType("bigint");
@@ -1911,6 +1956,19 @@ namespace DragaliaAPI.Database.Migrations
                     b.HasIndex("ViewerId");
 
                     b.ToTable("TimeAttackPlayers");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWallRewardDate", b =>
+                {
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("LastClaimDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ViewerId");
+
+                    b.ToTable("WallRewardDates");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponBody", b =>
@@ -2154,7 +2212,7 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerBannerData", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
-                        .WithMany("UserSummonList")
+                        .WithMany("BannerData")
                         .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -2167,6 +2225,17 @@ namespace DragaliaAPI.Database.Migrations
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("CharaList")
                         .HasForeignKey("ViewerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDiamondData", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithOne("DiamondData")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDiamondData", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2549,7 +2618,7 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackPlayer", b =>
                 {
-                    b.HasOne("DragaliaAPI.Database.DbTimeAttackClear", "Clear")
+                    b.HasOne("DragaliaAPI.Database.Entities.DbTimeAttackClear", "Clear")
                         .WithMany("Players")
                         .HasForeignKey("GameId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -2564,6 +2633,17 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("Clear");
 
                     b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWallRewardDate", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithOne("WallRewardDate")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbWallRewardDate", "ViewerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponBody", b =>
@@ -2599,11 +2679,6 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("DragaliaAPI.Database.DbTimeAttackClear", b =>
-                {
-                    b.Navigation("Players");
-                });
-
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbParty", b =>
                 {
                     b.Navigation("Units");
@@ -2615,9 +2690,13 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Navigation("AbilityCrestSetList");
 
+                    b.Navigation("BannerData");
+
                     b.Navigation("BuildList");
 
                     b.Navigation("CharaList");
+
+                    b.Navigation("DiamondData");
 
                     b.Navigation("DmodeCharas");
 
@@ -2675,13 +2754,18 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Navigation("UserData");
 
-                    b.Navigation("UserSummonList");
+                    b.Navigation("WallRewardDate");
 
                     b.Navigation("WeaponBodyList");
 
                     b.Navigation("WeaponPassiveAbilityList");
 
                     b.Navigation("WeaponSkinList");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackClear", b =>
+                {
+                    b.Navigation("Players");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackPlayer", b =>

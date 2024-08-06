@@ -1,5 +1,4 @@
 using DragaliaAPI.Database;
-using DragaliaAPI.Helpers;
 using DragaliaAPI.Models.Options;
 using DragaliaAPI.Services.Api;
 using DragaliaAPI.Shared.MasterAsset;
@@ -39,7 +38,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
 
     public async Task InitializeAsync()
     {
-        await MasterAsset.LoadAsync();
+        await MasterAsset.LoadAsync(FeatureFlagUtils.AllEnabledFeatureManager);
 
         await this.testContainersHelper.StartAsync();
 

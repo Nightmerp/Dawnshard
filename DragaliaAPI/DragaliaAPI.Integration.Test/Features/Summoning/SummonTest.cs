@@ -1,5 +1,7 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Summoning;
+using DragaliaAPI.Shared.Definitions.Enums.Summon;
+using DragaliaAPI.Shared.MasterAsset;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Summoning;
@@ -10,11 +12,12 @@ namespace DragaliaAPI.Integration.Test.Features.Summoning;
 public class SummonTest : TestFixture
 {
     private const int TestBannerId = 1020121;
+    private const int TestGalaBannerId = 1020183;
 
     public SummonTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
     {
-        CommonAssertionOptions.ApplyTimeOptions();
+        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 2);
     }
 
     [Fact]
@@ -150,6 +153,91 @@ public class SummonTest : TestFixture
     }
 
     [Fact]
+    public async Task SummonGetOddsData_CharaSsrSummon_ReturnsExpectedData()
+    {
+        int bannerId = MasterAsset.SummonTicket[SummonTickets.AdventurerSummon].SummonId;
+
+        SummonGetOddsDataResponse response = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(bannerId)
+            )
+        ).Data;
+
+        response.OddsRateList.Guarantee.Should().BeNull();
+        response
+            .OddsRateList.Normal.Unit.CharaOddsList.Should()
+            .BeEquivalentTo(
+                new List<OddsUnitDetail>()
+                {
+                    new()
+                    {
+                        Rarity = 5,
+                        UnitList = new List<Charas>()
+                        {
+                            Charas.Naveed,
+                            Charas.Mikoto,
+                            Charas.Ezelith,
+                            Charas.Xander,
+                            Charas.Xainfried,
+                            Charas.Lily,
+                            Charas.Hawk,
+                            Charas.Louise,
+                            Charas.Maribelle,
+                            Charas.Julietta,
+                            Charas.Lucretia,
+                            Charas.Hildegarde,
+                            Charas.Nefaria
+                        }.Select(x => new AtgenUnitList() { Id = (int)x, Rate = "7.692%" })
+                    },
+                    new() { Rarity = 4, UnitList = [], },
+                    new() { Rarity = 3, UnitList = [], }
+                }
+            );
+    }
+
+    [Fact]
+    public async Task SummonGetOddsData_IncludesPityRate()
+    {
+        await this.AddToDatabase(
+            new DbPlayerBannerData()
+            {
+                SummonBannerId = TestBannerId,
+                SummonCountSinceLastFiveStar = 20,
+            }
+        );
+
+        SummonGetOddsDataResponse response = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(TestBannerId)
+            )
+        ).Data;
+
+        OddsRate normalOdds = response.OddsRateList.Normal;
+        OddsRate guaranteeOdds = response.OddsRateList.Guarantee;
+
+        normalOdds
+            .RarityList.Should()
+            .BeEquivalentTo(
+                [
+                    new AtgenRarityList { Rarity = 5, TotalRate = "5.00%" },
+                    new AtgenRarityList { Rarity = 4, TotalRate = "16.00%" },
+                    new AtgenRarityList { Rarity = 3, TotalRate = "79.00%" },
+                ]
+            );
+
+        guaranteeOdds
+            .RarityList.Should()
+            .BeEquivalentTo(
+                [
+                    new AtgenRarityList { Rarity = 5, TotalRate = "5.00%" },
+                    new AtgenRarityList { Rarity = 4, TotalRate = "95.00%" },
+                ]
+            );
+    }
+
+    [Fact]
     public async Task SummonGetSummonHistory_ReturnsAnyData()
     {
         DbPlayerSummonHistory historyEntry =
@@ -182,8 +270,32 @@ public class SummonTest : TestFixture
             )
         ).Data;
 
-        // Too lazy to set up automapper to check exact result and it is covered more or less in SummonRepositoryTests.cs
-        response.SummonHistoryList.Should().NotBeEmpty();
+        response
+            .SummonHistoryList.Should()
+            .ContainSingle()
+            .Which.Should()
+            .BeEquivalentTo(
+                new SummonHistoryList()
+                {
+                    SummonId = 1,
+                    SummonPointId = 1,
+                    SummonExecType = SummonExecTypes.DailyDeal,
+                    ExecDate = DateTimeOffset.UtcNow,
+                    PaymentType = PaymentTypes.Diamantium,
+                    EntityType = EntityTypes.Dragon,
+                    EntityId = (int)Dragons.GalaRebornNidhogg,
+                    EntityQuantity = 1,
+                    EntityLevel = 1,
+                    EntityRarity = 5,
+                    EntityLimitBreakCount = 0,
+                    EntityHpPlusCount = 0,
+                    EntityAttackPlusCount = 0,
+                    SummonPrizeRank = (int)SummonPrizeRanks.None,
+                    SummonPoint = 10,
+                    GetDewPointQuantity = 0,
+                },
+                o => o.Excluding(x => x.KeyId)
+            );
     }
 
     [Fact]
@@ -217,13 +329,14 @@ public class SummonTest : TestFixture
 
         response
             .SummonList.Should()
-            .ContainSingle()
+            .HaveCount(2)
+            .And.Contain(x => x.SummonId == TestBannerId)
             .Which.Should()
             .BeEquivalentTo(
                 new SummonList()
                 {
                     SummonId = TestBannerId,
-                    SummonType = 2,
+                    SummonType = SummonTypes.Normal,
                     SingleCrystal = 120,
                     SingleDiamond = 120,
                     MultiCrystal = 1200,
@@ -262,6 +375,74 @@ public class SummonTest : TestFixture
                     UseLimitTime = DateTimeOffset.UnixEpoch
                 }
             );
+    }
+
+    [Fact]
+    public async Task SummonGetSummonList_SpecialTicketsHeld_ReturnsSpecialTicketBanners()
+    {
+        // csharpier-ignore
+        await this.AddRangeToDatabase(
+            [
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.AdventurerSummon,
+                    Quantity = 1
+                },
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.DragonSummon,
+                    Quantity = 1
+                },
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.AdventurerSummonPlus,
+                    Quantity = 1
+                },
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.DragonSummonPlus,
+                    Quantity = 1
+                },
+            ]
+        );
+
+        SummonGetSummonListResponse response = (
+            await this.Client.PostMsgpack<SummonGetSummonListResponse>("summon/get_summon_list")
+        ).Data;
+
+        response
+            .CharaSsrSummonList.Should()
+            .Contain(x =>
+                x.SummonId == MasterAsset.SummonTicket[SummonTickets.AdventurerSummon].SummonId
+            );
+        response
+            .DragonSsrSummonList.Should()
+            .Contain(x =>
+                x.SummonId == MasterAsset.SummonTicket[SummonTickets.DragonSummon].SummonId
+            );
+        response
+            .CharaSsrUpdateSummonList.Should()
+            .Contain(x => x.SummonId == SummonConstants.AdventurerSummonPlusBannerId);
+        response
+            .DragonSsrUpdateSummonList.Should()
+            .Contain(x => x.SummonId == SummonConstants.DragonSummonPlusBannerId);
+
+        response
+            .SummonPointList.Should()
+            .HaveCountLessOrEqualTo(1, "special ticket banners don't participate in wyrmsigils");
+
+        await this.ApiContext.PlayerSummonTickets.ExecuteUpdateAsync(e =>
+            e.SetProperty(p => p.Quantity, 0)
+        );
+
+        response = (
+            await this.Client.PostMsgpack<SummonGetSummonListResponse>("summon/get_summon_list")
+        ).Data;
+
+        response.CharaSsrSummonList.Should().BeEmpty();
+        response.DragonSsrSummonList.Should().BeEmpty();
+        response.CharaSsrUpdateSummonList.Should().BeEmpty();
+        response.DragonSsrUpdateSummonList.Should().BeEmpty();
     }
 
     [Fact]
@@ -567,6 +748,281 @@ public class SummonTest : TestFixture
             );
 
         response.DataHeaders.ResultCode.Should().Be(ResultCode.CommonMaterialShort);
+    }
+
+    [Theory]
+    [InlineData(SummonTickets.AdventurerSummon, 1040001)]
+    [InlineData(SummonTickets.DragonSummon, 1060001)]
+    [InlineData(SummonTickets.AdventurerSummonPlus, SummonConstants.AdventurerSummonPlusBannerId)]
+    [InlineData(SummonTickets.DragonSummonPlus, SummonConstants.DragonSummonPlusBannerId)]
+    public async Task SummonRequest_SpecialTicket_Success(SummonTickets ticket, int bannerId)
+    {
+        await this.AddToDatabase(new DbSummonTicket() { SummonTicketId = ticket, Quantity = 1, });
+
+        SummonRequestResponse response = (
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    bannerId,
+                    SummonExecTypes.Single,
+                    0,
+                    PaymentTypes.Ticket,
+                    new PaymentTarget(1, 1)
+                )
+            )
+        ).Data;
+
+        response.ResultSummonPoint.Should().Be(0);
+        response.ResultUnitList.Should().ContainSingle().Which.Rarity.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task SummonRequest_MaxPity_GrantsGuaranteedFiveStar()
+    {
+        await this.AddToDatabase(
+            new DbPlayerBannerData()
+            {
+                SummonBannerId = TestBannerId,
+                SummonCountSinceLastFiveStar = 100,
+            }
+        );
+
+        SummonGetOddsDataResponse oddsResponse = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(TestBannerId)
+            )
+        ).Data;
+
+        oddsResponse
+            .OddsRateList.Normal.RarityList.Should()
+            .BeEquivalentTo(
+                [
+                    new AtgenRarityList { Rarity = 5, TotalRate = "9.00%" },
+                    new AtgenRarityList { Rarity = 4, TotalRate = "16.00%" },
+                    new AtgenRarityList { Rarity = 3, TotalRate = "75.00%" },
+                ]
+            );
+
+        DbPlayerUserData userData = await this
+            .ApiContext.PlayerUserData.AsNoTracking()
+            .SingleAsync(x => x.ViewerId == this.ViewerId);
+
+        DragaliaResponse<SummonRequestResponse> response =
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestBannerId,
+                    SummonExecTypes.Single,
+                    1,
+                    PaymentTypes.Wyrmite,
+                    new PaymentTarget(userData.Crystal, 120)
+                )
+            );
+
+        response.Data.ResultUnitList.Should().Contain(x => x.Rarity == 5);
+
+        oddsResponse = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(TestBannerId)
+            )
+        ).Data;
+
+        oddsResponse
+            .OddsRateList.Normal.RarityList.Should()
+            .BeEquivalentTo(
+                [
+                    new AtgenRarityList { Rarity = 5, TotalRate = "4.00%" },
+                    new AtgenRarityList { Rarity = 4, TotalRate = "16.00%" },
+                    new AtgenRarityList { Rarity = 3, TotalRate = "80.00%" },
+                ]
+            );
+    }
+
+    [Fact]
+    public async Task SummonRequest_MaxPity_Gala_GrantsGuaranteedFiveStar()
+    {
+        await this.AddToDatabase(
+            new DbPlayerBannerData()
+            {
+                SummonBannerId = TestGalaBannerId,
+                SummonCountSinceLastFiveStar = 60,
+            }
+        );
+
+        DbPlayerUserData userData = await this
+            .ApiContext.PlayerUserData.AsNoTracking()
+            .SingleAsync(x => x.ViewerId == this.ViewerId);
+
+        DragaliaResponse<SummonRequestResponse> response =
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestGalaBannerId,
+                    SummonExecTypes.Single,
+                    1,
+                    PaymentTypes.Wyrmite,
+                    new PaymentTarget(userData.Crystal, 120)
+                )
+            );
+
+        response.Data.ResultUnitList.Should().Contain(x => x.Rarity == 5);
+
+        SummonGetOddsDataResponse oddsResponse = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(TestBannerId)
+            )
+        ).Data;
+
+        oddsResponse
+            .OddsRateList.Normal.RarityList.Should()
+            .BeEquivalentTo(
+                [
+                    new AtgenRarityList { Rarity = 5, TotalRate = "4.00%" },
+                    new AtgenRarityList { Rarity = 4, TotalRate = "16.00%" },
+                    new AtgenRarityList { Rarity = 3, TotalRate = "80.00%" },
+                ]
+            );
+    }
+
+    [Fact]
+    public async Task SummonRequest_NoFiveStars_IncrementsPityRate()
+    {
+        SummonGetOddsDataResponse oddsResponse = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(TestBannerId)
+            )
+        ).Data;
+
+        oddsResponse
+            .OddsRateList.Normal.RarityList.Should()
+            .BeEquivalentTo(
+                [
+                    new AtgenRarityList { Rarity = 5, TotalRate = "4.00%" },
+                    new AtgenRarityList { Rarity = 4, TotalRate = "16.00%" },
+                    new AtgenRarityList { Rarity = 3, TotalRate = "80.00%" },
+                ]
+            );
+
+        IEnumerable<AtgenResultUnitList> result;
+
+        do
+        {
+            DbPlayerUserData userData = await this
+                .ApiContext.PlayerUserData.AsNoTracking()
+                .SingleAsync(x => x.ViewerId == this.ViewerId);
+
+            DragaliaResponse<SummonRequestResponse> response =
+                await this.Client.PostMsgpack<SummonRequestResponse>(
+                    "summon/request",
+                    new SummonRequestRequest(
+                        TestBannerId,
+                        SummonExecTypes.Tenfold,
+                        1,
+                        PaymentTypes.Wyrmite,
+                        new PaymentTarget(userData.Crystal, 1200)
+                    )
+                );
+
+            result = response.Data.ResultUnitList;
+        } while (result.Any(x => x.Rarity == 5));
+
+        oddsResponse = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(TestBannerId)
+            )
+        ).Data;
+
+        double fiveStarRate = double.Parse(
+            oddsResponse
+                .OddsRateList.Normal.RarityList.First(x => x.Rarity == 5)
+                .TotalRate.TrimEnd('%')
+        );
+
+        fiveStarRate.Should().BeGreaterOrEqualTo(4.5d);
+    }
+
+    [Fact]
+    public async Task SummonRequest_TenfoldDiamantium_GrantsDoublePoints()
+    {
+        this.ApiContext.PlayerDiamondData.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteUpdate(e =>
+                e.SetProperty(p => p.FreeDiamond, 1000).SetProperty(p => p.PaidDiamond, 210)
+            );
+
+        DragaliaResponse<SummonRequestResponse> response =
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestGalaBannerId,
+                    SummonExecTypes.Tenfold,
+                    1,
+                    PaymentTypes.Diamantium,
+                    new PaymentTarget(1210, 1200)
+                )
+            );
+
+        response.Data.ResultSummonPoint.Should().Be(20);
+        response.Data.UpdateDataList.DiamondData?.FreeDiamond.Should().Be(0);
+        response.Data.UpdateDataList.DiamondData?.PaidDiamond.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task SummonRequest_DailyDeal_Success_LimitedToOnePerDay()
+    {
+        this.ApiContext.PlayerDiamondData.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteUpdate(e =>
+                e.SetProperty(p => p.FreeDiamond, 30).SetProperty(p => p.PaidDiamond, 0)
+            );
+
+        DragaliaResponse<SummonRequestResponse> response =
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestGalaBannerId,
+                    SummonExecTypes.DailyDeal,
+                    1,
+                    PaymentTypes.Diamantium,
+                    new PaymentTarget(30, 30)
+                )
+            );
+
+        response.Data.ResultSummonPoint.Should().Be(2);
+        response.Data.UpdateDataList.DiamondData?.FreeDiamond.Should().Be(0);
+        response.Data.UpdateDataList.DiamondData?.PaidDiamond.Should().Be(0);
+
+        /* The client calls /summon/get_summon_list after finishing a summon, and this response appears to influence
+         whether the Daily Deal button is disabled. */
+
+        DragaliaResponse<SummonGetSummonListResponse> summonListResponse =
+            await this.Client.PostMsgpack<SummonGetSummonListResponse>("/summon/get_summon_list");
+
+        SummonList summonList = summonListResponse.Data.SummonList.First(x =>
+            x.SummonId == TestGalaBannerId
+        );
+
+        summonList.DailyCount.Should().Be(1);
+        summonList.DailyLimit.Should().Be(1);
+
+        (
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestGalaBannerId,
+                    SummonExecTypes.DailyDeal,
+                    1,
+                    PaymentTypes.Diamantium,
+                    new PaymentTarget(30, 30)
+                ),
+                ensureSuccessHeader: false
+            )
+        )
+            .DataHeaders.ResultCode.Should()
+            .Be(ResultCode.SummonDrawLimit);
     }
 
     [Fact]

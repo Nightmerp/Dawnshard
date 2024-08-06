@@ -1,10 +1,10 @@
-using System.Diagnostics.CodeAnalysis;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Missions;
+using DragaliaAPI.Features.Present;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
@@ -18,6 +18,7 @@ public class DungeonRecordRewardServiceTest
 {
     private readonly Mock<IQuestCompletionService> mockQuestCompletionService;
     private readonly Mock<IRewardService> mockRewardService;
+    private readonly Mock<IPresentService> mockPresentService;
     private readonly Mock<IAbilityCrestMultiplierService> mockAbilityCrestMultiplierService;
     private readonly Mock<IEventDropService> mockEventDropService;
     private readonly Mock<IMissionProgressionService> mockMissionProgressionService;
@@ -30,6 +31,7 @@ public class DungeonRecordRewardServiceTest
     {
         this.mockQuestCompletionService = new(MockBehavior.Strict);
         this.mockRewardService = new(MockBehavior.Strict);
+        this.mockPresentService = new(MockBehavior.Strict);
         this.mockAbilityCrestMultiplierService = new(MockBehavior.Strict);
         this.mockEventDropService = new(MockBehavior.Strict);
         this.mockMissionProgressionService = new(MockBehavior.Strict);
@@ -39,6 +41,7 @@ public class DungeonRecordRewardServiceTest
         this.dungeonRecordRewardService = new DungeonRecordRewardService(
             this.mockQuestCompletionService.Object,
             this.mockRewardService.Object,
+            this.mockPresentService.Object,
             this.mockAbilityCrestMultiplierService.Object,
             this.mockEventDropService.Object,
             this.mockMissionProgressionService.Object,
@@ -86,8 +89,8 @@ public class DungeonRecordRewardServiceTest
         this.mockQuestRepository.Setup(x => x.GetQuestDataAsync(questId)).ReturnsAsync(questEntity);
 
         this.mockQuestCompletionService.Setup(x =>
-            x.CompleteQuestMissions(session, new[] { false, false, false }, playRecord)
-        )
+                x.CompleteQuestMissions(session, new[] { false, false, false }, playRecord)
+            )
             .ReturnsAsync(status);
         this.mockQuestCompletionService.Setup(x => x.GrantFirstClearRewards(questId))
             .ReturnsAsync(firstClearRewards);
@@ -210,12 +213,12 @@ public class DungeonRecordRewardServiceTest
         this.mockRewardService.Setup(x => x.GrantRewards(It.IsAny<List<Entity>>()))
             .Returns(Task.CompletedTask);
         this.mockRewardService.Setup(x =>
-            x.GrantReward(It.Is<Entity>(e => e.Type == EntityTypes.Mana && e.Quantity == 40))
-        )
+                x.GrantReward(It.Is<Entity>(e => e.Type == EntityTypes.Mana && e.Quantity == 40))
+            )
             .ReturnsAsync(RewardGrantResult.Added);
         this.mockRewardService.Setup(x =>
-            x.GrantReward(It.Is<Entity>(e => e.Type == EntityTypes.Rupies && e.Quantity == 40))
-        )
+                x.GrantReward(It.Is<Entity>(e => e.Type == EntityTypes.Rupies && e.Quantity == 40))
+            )
             .ReturnsAsync(RewardGrantResult.Added);
 
         (await this.dungeonRecordRewardService.ProcessEnemyDrops(playRecord, session))
@@ -284,24 +287,24 @@ public class DungeonRecordRewardServiceTest
         int enemyPoints = 30;
 
         this.mockAbilityCrestMultiplierService.Setup(x =>
-            x.GetEventMultiplier(session.Party, session.QuestData.Gid)
-        )
+                x.GetEventMultiplier(session.Party, session.QuestData.Gid)
+            )
             .ReturnsAsync((materialMultiplier, pointMultiplier));
 
         this.mockQuestCompletionService.Setup(x =>
-            x.CompleteQuestScoreMissions(session, playRecord, pointMultiplier)
-        )
+                x.CompleteQuestScoreMissions(session, playRecord, pointMultiplier)
+            )
             .ReturnsAsync((scoreMissionSuccessLists, points, boostedPoints));
         this.mockQuestCompletionService.Setup(x =>
-            x.CompleteEnemyScoreMissions(session, playRecord)
-        )
+                x.CompleteEnemyScoreMissions(session, playRecord)
+            )
             .ReturnsAsync((enemyScoring, enemyPoints));
 
         this.mockEventDropService.Setup(x => x.ProcessEventPassiveDrops(session.QuestData))
             .ReturnsAsync(passiveUpLists);
         this.mockEventDropService.Setup(x =>
-            x.ProcessEventMaterialDrops(session.QuestData, playRecord, materialMultiplier)
-        )
+                x.ProcessEventMaterialDrops(session.QuestData, playRecord, materialMultiplier)
+            )
             .ReturnsAsync(eventDrops);
 
         this.mockMissionProgressionService.Setup(x =>

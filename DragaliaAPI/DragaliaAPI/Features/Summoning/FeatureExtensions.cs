@@ -7,7 +7,11 @@ public static partial class FeatureExtensions
 {
     public static IServiceCollection AddSummoningFeature(
         this IServiceCollection serviceCollection
-    ) => serviceCollection.AddScoped<SummonService>().AddScoped<SummonOddsService>();
+    ) =>
+        serviceCollection
+            .AddScoped<SummonService>()
+            .AddScoped<SummonOddsService>()
+            .AddScoped<UnitService>();
 
     public static IServiceCollection AddSummoningOptions(
         this IServiceCollection serviceCollection,
@@ -17,6 +21,11 @@ public static partial class FeatureExtensions
         serviceCollection
             .Configure<SummonBannerOptions>(config.GetRequiredSection(nameof(SummonBannerOptions)))
             .AddOptions<SummonBannerOptions>()
+            .Validate(
+                opts => opts.Banners.DistinctBy(x => x.Id).Count() == opts.Banners.Count,
+                "bannerConfig.json IDs must be unique!"
+            )
+            .ValidateOnStart()
             .PostConfigure(opts => opts.PostConfigure());
 
         return serviceCollection;

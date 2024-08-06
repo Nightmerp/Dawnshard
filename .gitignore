@@ -5,7 +5,6 @@ PhotonRealtimeDotnetSdk/**/*
 .run
 .env
 test_coverage.json
-launchSettings.json
 appsettings.Development.json
 test_coverage.json
 .run
@@ -419,3 +418,6 @@ __mismatch__/
 #sln startup
 DragaliaAPI.sln.startup.json
 
+!Website/.env
+!Website/tests/.env
+.env*local

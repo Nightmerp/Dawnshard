@@ -1,0 +1,19 @@
+{
+  "name": "maintenance-worker",
+  "packageManager": "pnpm@9.2.0",
+  "version": "1.0.0",
+  "description": "Cloudflare worker for showing the maintenance screen even if the origin server is down",
+  "devDependencies": {
+    "@msgpack/msgpack": "3.0.0-beta2",
+    "@types/jest": "29.5.12",
+    "miniflare": "3.20240725.0",
+    "vitest": "2.0.5",
+    "vitest-environment-miniflare": "2.14.2",
+    "wrangler": "3.68.0"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "pnpm exec wrangler dev",
+    "test": "pnpm exec vitest run"
+  }
+}

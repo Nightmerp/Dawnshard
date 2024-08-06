@@ -1,10 +1,10 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
-using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Models;
 using DragaliaAPI.Services.Game;
+using DragaliaAPI.Shared.Features.Presents;
 using DragaliaAPI.Shared.MasterAsset;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -104,7 +104,7 @@ public class DungeonRecordTest : TestFixture
                 }
             };
 
-        string key = await Services.GetRequiredService<IDungeonService>().StartDungeon(mockSession);
+        string key = await this.StartDungeon(mockSession);
 
         DungeonRecordRecordResponse response = (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -230,7 +230,7 @@ public class DungeonRecordTest : TestFixture
                 }
             };
 
-        string key = await Services.GetRequiredService<IDungeonService>().StartDungeon(mockSession);
+        string key = await this.StartDungeon(mockSession);
 
         DungeonRecordRecordResponse response = (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -281,7 +281,7 @@ public class DungeonRecordTest : TestFixture
                 }
             };
 
-        string key = await Services.GetRequiredService<IDungeonService>().StartDungeon(mockSession);
+        string key = await this.StartDungeon(mockSession);
 
         DungeonRecordRecordResponse response = (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -865,7 +865,7 @@ public class DungeonRecordTest : TestFixture
                 }
             };
 
-        string key = await Services.GetRequiredService<IDungeonService>().StartDungeon(mockSession);
+        string key = await this.StartDungeon(mockSession);
 
         DragaliaResponse<DungeonRecordRecordResponse> response =
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -911,9 +911,6 @@ public class DungeonRecordTest : TestFixture
                 ViewerId = ViewerId
             }
         );
-
-        this.MockPhotonStateApi.Setup(x => x.GetGameByViewerId(this.ViewerId))
-            .ReturnsAsync(new Photon.Shared.Models.ApiGame() { Name = roomName });
 
         DungeonStartStartMultiResponse startResponse = (
             await this.Client.PostMsgpack<DungeonStartStartMultiResponse>(
@@ -989,7 +986,7 @@ public class DungeonRecordTest : TestFixture
                 EnemyList = new Dictionary<int, IEnumerable<AtgenEnemy>>()
             };
 
-        string key = await Services.GetRequiredService<IDungeonService>().StartDungeon(mockSession);
+        string key = await this.StartDungeon(mockSession);
 
         (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -1044,7 +1041,7 @@ public class DungeonRecordTest : TestFixture
                 EnemyList = new Dictionary<int, IEnumerable<AtgenEnemy>>()
             };
 
-        string key = await Services.GetRequiredService<IDungeonService>().StartDungeon(mockSession);
+        string key = await this.StartDungeon(mockSession);
 
         (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -1210,12 +1207,90 @@ public class DungeonRecordTest : TestFixture
         response.UpdateDataList.UserData.TutorialStatus.Should().Be(20501);
     }
 
-    private async Task<string> StartDungeon(DungeonSession session) =>
-        await Services.GetRequiredService<IDungeonService>().StartDungeon(session);
+    [Fact]
+    public async Task Record_Multi_GrantsFirstMeetingReward()
+    {
+        int questId = TutorialService.TutorialQuestIds.AvenueToPowerBeginner;
+
+        await this.AddToDatabase(
+            new DbQuest()
+            {
+                QuestId = questId,
+                State = 0,
+                PlayCount = 0,
+            }
+        );
+
+        string dungeonKey = await this.StartDungeon(
+            new()
+            {
+                Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
+                QuestData = MasterAsset.QuestData.Get(questId),
+                EnemyList = new Dictionary<int, IEnumerable<AtgenEnemy>>()
+            }
+        );
+
+        DungeonRecordRecordMultiRequest request =
+            new()
+            {
+                DungeonKey = dungeonKey,
+                PlayRecord = new PlayRecord
+                {
+                    Time = 10,
+                    TreasureRecord = new List<AtgenTreasureRecord>()
+                    {
+                        new() { AreaIdx = 1, Enemy = [] }
+                    },
+                    LiveUnitNoList = new List<int>(),
+                    DamageRecord = [],
+                    DragonDamageRecord = [],
+                    BattleRoyalRecord = new AtgenBattleRoyalRecord(),
+                },
+                ConnectingViewerIdList = [1, 2]
+            };
+
+        DungeonRecordRecordMultiResponse response = (
+            await Client.PostMsgpack<DungeonRecordRecordMultiResponse>(
+                "/dungeon_record/record_multi",
+                request
+            )
+        ).Data;
+
+        response
+            .IngameResultData.RewardRecord.FirstMeeting.Should()
+            .BeEquivalentTo(
+                new AtgenFirstMeeting()
+                {
+                    Headcount = 2,
+                    Id = 0,
+                    TotalQuantity = 200,
+                    Type = EntityTypes.FreeDiamantium
+                }
+            );
+        response.UpdateDataList.PresentNotice.PresentCount.Should().Be(1);
+
+        PresentGetPresentListResponse presentResponse = (
+            await this.Client.PostMsgpack<PresentGetPresentListResponse>(
+                "present/get_present_list",
+                new PresentGetPresentListRequest()
+            )
+        ).Data;
+
+        presentResponse
+            .PresentList.Should()
+            .Contain(x => x.MessageId == PresentMessage.SocialReward && x.MessageParamValue1 == 2);
+    }
+
+    private async Task<string> StartDungeon(DungeonSession session)
+    {
+        string key = this.DungeonService.CreateSession(session);
+        await this.DungeonService.SaveSession(CancellationToken.None);
+
+        return key;
+    }
 
     private void SetupPhotonAuthentication()
     {
-        Environment.SetEnvironmentVariable("PHOTON_TOKEN", "supersecrettoken");
         this.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
             "supersecrettoken"

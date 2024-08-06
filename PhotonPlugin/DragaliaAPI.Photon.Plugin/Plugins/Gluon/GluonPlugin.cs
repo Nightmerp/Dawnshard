@@ -15,7 +15,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.Gluon
         private readonly PluginStateService pluginStateService;
         private readonly GameLogicPlugin gameLogicPlugin;
         private readonly StateManagerPlugin stateManagerPlugin;
-        private readonly DiscordPlugin discordPlugin;
+        private readonly DiscordPlugin? discordPlugin;
 
         public override string Name => nameof(GluonPlugin);
 
@@ -23,7 +23,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.Gluon
             PluginStateService pluginStateService,
             GameLogicPlugin gameLogicPlugin,
             StateManagerPlugin stateManagerPlugin,
-            DiscordPlugin discordPlugin
+            DiscordPlugin? discordPlugin
         )
         {
             this.pluginStateService = pluginStateService;
@@ -40,47 +40,61 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.Gluon
         {
             this.PluginHost = host;
 
-            return this.stateManagerPlugin.SetupInstance(host, config, out errorMsg)
-                && this.gameLogicPlugin.SetupInstance(host, config, out errorMsg)
-                && this.discordPlugin.SetupInstance(host, config, out errorMsg);
+            if (!this.stateManagerPlugin.SetupInstance(host, config, out errorMsg))
+            {
+                return false;
+            }
+            if (!this.gameLogicPlugin.SetupInstance(host, config, out errorMsg))
+            {
+                return false;
+            }
+            if (
+                this.discordPlugin is not null
+                && !this.discordPlugin.SetupInstance(host, config, out errorMsg)
+            )
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public override void OnCreateGame(ICreateGameCallInfo info)
         {
             this.gameLogicPlugin.OnCreateGame(info);
+            this.stateManagerPlugin.OnCreateGame(info);
 
-            if (this.pluginStateService.ShouldPublish)
+            if (this.pluginStateService.IsPubliclyVisible)
             {
-                this.stateManagerPlugin.OnCreateGame(info);
-                this.discordPlugin.OnCreateGame(info);
+                this.discordPlugin?.OnCreateGame(info);
             }
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
 
         public override void OnJoin(IJoinGameCallInfo info)
         {
             this.gameLogicPlugin.OnJoin(info);
-
-            if (this.pluginStateService.ShouldPublish)
-            {
-                this.stateManagerPlugin.OnJoin(info);
-            }
+            this.stateManagerPlugin.OnJoin(info);
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
 
         public override void OnLeave(ILeaveGameCallInfo info)
         {
             this.gameLogicPlugin.OnLeave(info);
-
-            if (this.pluginStateService.ShouldPublish)
-                this.stateManagerPlugin.OnLeave(info);
+            this.stateManagerPlugin.OnLeave(info);
 
             if (!info.IsProcessed)
+            {
                 base.OnLeave(info);
+            }
         }
 
         public override void BeforeCloseGame(IBeforeCloseGameCallInfo info)
@@ -88,37 +102,37 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.Gluon
             // This can't use OnCloseGame with StateManagerPlugin, as there can only be one synchronous outbound HTTP request
             // per event handler. (Unless we chain them together using callbacks...)
 
-            if (this.pluginStateService.ShouldPublish)
+            if (this.pluginStateService.IsPubliclyVisible)
             {
-                this.discordPlugin.BeforeCloseGame(info);
+                this.discordPlugin?.BeforeCloseGame(info);
             }
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
 
         public override void OnCloseGame(ICloseGameCallInfo info)
         {
             // GameLogicPlugin has no override for closing a game
-
-            if (this.pluginStateService.ShouldPublish)
-            {
-                this.stateManagerPlugin.OnCloseGame(info);
-            }
+            this.stateManagerPlugin.OnCloseGame(info);
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
 
         public override void OnRaiseEvent(IRaiseEventCallInfo info)
         {
             this.gameLogicPlugin.OnRaiseEvent(info);
-
-            if (this.pluginStateService.ShouldPublish)
-                this.stateManagerPlugin.OnRaiseEvent(info);
+            this.stateManagerPlugin.OnRaiseEvent(info);
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
 
         public override void BeforeSetProperties(IBeforeSetPropertiesCallInfo info)
@@ -126,21 +140,25 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.Gluon
             this.gameLogicPlugin.BeforeSetProperties(info);
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
 
         public override void OnSetProperties(ISetPropertiesCallInfo info)
         {
             this.gameLogicPlugin.OnSetProperties(info);
+            this.stateManagerPlugin.OnSetProperties(info);
 
-            if (this.pluginStateService.ShouldPublish)
+            if (this.pluginStateService.IsPubliclyVisible)
             {
-                this.stateManagerPlugin.OnSetProperties(info);
-                this.discordPlugin.OnSetProperties(info);
+                this.discordPlugin?.OnSetProperties(info);
             }
 
             if (!info.IsProcessed)
+            {
                 info.Continue();
+            }
         }
     }
 }

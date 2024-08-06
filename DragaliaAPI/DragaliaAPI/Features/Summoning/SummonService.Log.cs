@@ -21,5 +21,17 @@ public partial class SummonService
             "Unexpected RewardService result for wyrmsigil trade: {Result}"
         )]
         public static partial void UnexpectedRewardResult(ILogger logger, RewardGrantResult result);
+
+        [LoggerMessage(
+            LogLevel.Information,
+            "Adding summon trade {Trade} to gift box as storage was full"
+        )]
+        public static partial void AddingTradeToGiftBox(
+            ILogger logger,
+            AtgenSummonPointTradeList trade
+        );
+
+        [LoggerMessage(LogLevel.Information, "Granting guaranteed 5* reward for banner {BannerId}")]
+        public static partial void GrantingGuaranteedFiveStar(ILogger logger, int bannerId);
     }
 }

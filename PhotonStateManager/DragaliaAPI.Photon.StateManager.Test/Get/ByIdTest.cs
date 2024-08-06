@@ -28,19 +28,12 @@ public class ByIdTest : TestFixture
                 StartEntryTime = DateTimeOffset.UtcNow,
                 EntryConditions = new()
                 {
-                    UnacceptedElementTypeList = new List<int>() { 2, 3, 4, 5 },
-                    UnacceptedWeaponTypeList = new List<int>() { 1, 2, 3, 4, 5, 6, 7, 8 },
+                    UnacceptedElementTypeList = [2, 3, 4, 5],
+                    UnacceptedWeaponTypeList = [1, 2, 3, 4, 5, 6, 7, 8],
                     RequiredPartyPower = 11700,
                     ObjectiveTextId = 1,
                 },
-                Players = new List<Player>()
-                {
-                    new()
-                    {
-                        ViewerId = 2,
-                        PartyNoList = new List<int>() { 40 }
-                    }
-                }
+                Players = [new() { ViewerId = 2, PartyNoList = [40] }]
             };
 
         this.RedisConnectionProvider.RedisCollection<RedisGame>().Insert(game);
@@ -50,7 +43,7 @@ public class ByIdTest : TestFixture
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await response.Content.ReadFromJsonAsync<ApiGame>())
             .Should()
-            .BeEquivalentTo(new ApiGame(game));
+            .BeEquivalentTo(game.ToApiGame());
     }
 
     [Fact]

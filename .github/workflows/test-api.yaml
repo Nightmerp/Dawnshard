@@ -1,17 +1,24 @@
-name: Test API
+name: Test DragaliaAPI
 
 on:
   push:
     branches:
       - main
+    paths:
+      - DragaliaAPI/**
+      - Shared/**
+      - Directory.Packages.props
   pull_request:
     branches:
       - main
     paths:
       - DragaliaAPI/**
       - Shared/**
-      - Directory.Build.props
       - Directory.Packages.props
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   integration-test:
@@ -32,7 +39,7 @@ jobs:
             "DragaliaAPI/DragaliaAPI.Test",
             "DragaliaAPI/DragaliaAPI.Database.Test",
             "DragaliaAPI/DragaliaAPI.Shared.Test",
-            "DragaliaAPI/DragaliaAPI.Shared.SourceGenerator.Test"
+            "DragaliaAPI/DragaliaAPI.Shared.SourceGenerator.Test",
           ]
     uses: ./.github/workflows/test.yaml
     with:

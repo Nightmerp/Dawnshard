@@ -2,7 +2,6 @@
 using DragaliaAPI.Features.Dungeon.AutoRepeat;
 using DragaliaAPI.Features.TimeAttack;
 using DragaliaAPI.Middleware;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -16,6 +15,7 @@ public class DungeonRecordController(
     IDungeonRecordService dungeonRecordService,
     IDungeonRecordDamageService dungeonRecordDamageService,
     IDungeonRecordHelperService dungeonRecordHelperService,
+    IDungeonRecordRewardService dungeonRecordRewardService,
     IDungeonService dungeonService,
     ITimeAttackService timeAttackService,
     IAutoRepeatService autoRepeatService,
@@ -28,7 +28,10 @@ public class DungeonRecordController(
         CancellationToken cancellationToken
     )
     {
-        DungeonSession session = await dungeonService.FinishDungeon(request.DungeonKey);
+        DungeonSession session = await dungeonService.GetSession(
+            request.DungeonKey,
+            cancellationToken
+        );
 
         IngameResultData ingameResultData = await dungeonRecordService.GenerateIngameResultData(
             request.DungeonKey,
@@ -66,17 +69,22 @@ public class DungeonRecordController(
             );
         }
 
+        await dungeonService.RemoveSession(request.DungeonKey, cancellationToken);
+
         return response;
     }
 
     [HttpPost("record_multi")]
     [Authorize(AuthenticationSchemes = nameof(PhotonAuthenticationHandler))]
-    public async Task<DragaliaResult> RecordMulti(
+    public async Task<DragaliaResult<DungeonRecordRecordMultiResponse>> RecordMulti(
         DungeonRecordRecordMultiRequest request,
         CancellationToken cancellationToken
     )
     {
-        DungeonSession session = await dungeonService.FinishDungeon(request.DungeonKey);
+        DungeonSession session = await dungeonService.GetSession(
+            request.DungeonKey,
+            cancellationToken
+        );
 
         IngameResultData ingameResultData = await dungeonRecordService.GenerateIngameResultData(
             request.DungeonKey,
@@ -84,18 +92,29 @@ public class DungeonRecordController(
             session
         );
 
-        (
-            IEnumerable<UserSupportList> helperList,
-            IEnumerable<AtgenHelperDetailList> helperDetailList
-        ) = await dungeonRecordHelperService.ProcessHelperDataMulti();
+        if (request.ConnectingViewerIdList is not null)
+        {
+            ingameResultData.RewardRecord.FirstMeeting =
+                dungeonRecordRewardService.ProcessFirstMeetingRewards(
+                    request.ConnectingViewerIdList
+                );
 
-        ingameResultData.HelperList = helperList;
-        ingameResultData.HelperDetailList = helperDetailList;
+            (ingameResultData.HelperList, ingameResultData.HelperDetailList) =
+                await dungeonRecordHelperService.ProcessHelperDataMulti(
+                    request.ConnectingViewerIdList
+                );
+        }
+        else
+        {
+            (ingameResultData.HelperList, ingameResultData.HelperDetailList) =
+                await dungeonRecordHelperService.ProcessHelperDataMulti();
+        }
+
         ingameResultData.PlayType = QuestPlayType.Multi;
 
         UpdateDataList updateDataList = await updateDataService.SaveChangesAsync(cancellationToken);
 
-        DungeonRecordRecordResponse response =
+        DungeonRecordRecordMultiResponse response =
             new() { IngameResultData = ingameResultData, UpdateDataList = updateDataList, };
 
         if (session.QuestData?.IsSumUpTotalDamage ?? false)
@@ -106,7 +125,9 @@ public class DungeonRecordController(
             );
         }
 
-        return Ok(response);
+        await dungeonService.RemoveSession(request.DungeonKey, cancellationToken);
+
+        return response;
     }
 
     [HttpPost("record_time_attack")]

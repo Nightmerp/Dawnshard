@@ -1,11 +1,13 @@
 ﻿using DragaliaAPI.Controllers;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Features.Story;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
+using static DragaliaAPI.Infrastructure.DragaliaHttpConstants;
 
 namespace DragaliaAPI.Features.Summoning;
 
@@ -13,8 +15,8 @@ namespace DragaliaAPI.Features.Summoning;
 public class RedoableSummonController(
     SummonService summonService,
     SummonOddsService summonOddsService,
+    UnitService unitService,
     IStoryRepository storyRepository,
-    IUnitRepository unitRepository,
     ITutorialService tutorialService,
     IUpdateDataService updateDataService,
     IDistributedCache cache
@@ -31,13 +33,18 @@ public class RedoableSummonController(
 
     [HttpPost]
     [Route("get_data")]
-    public async Task<DragaliaResult<RedoableSummonGetDataResponse>> GetData()
+    public DragaliaResult<RedoableSummonGetDataResponse> GetData()
     {
-        OddsRate normalOddsRate = await summonOddsService.GetNormalOddsRate(
-            SummonConstants.RedoableSummonBannerId
+        // The reroll banner does not have a pity mechanic.
+        const int summonCountSinceLastFiveStar = 0;
+
+        OddsRate normalOddsRate = summonOddsService.GetNormalOddsRate(
+            SummonConstants.RedoableSummonBannerId,
+            summonCountSinceLastFiveStar
         );
-        OddsRate guaranteeRate = await summonOddsService.GetGuaranteeOddsRate(
-            SummonConstants.RedoableSummonBannerId
+        OddsRate? guaranteeRate = summonOddsService.GetGuaranteeOddsRate(
+            SummonConstants.RedoableSummonBannerId,
+            summonCountSinceLastFiveStar
         );
 
         return new RedoableSummonGetDataResponse()
@@ -53,7 +60,9 @@ public class RedoableSummonController(
 
     [HttpPost]
     [Route("pre_exec")]
-    public async Task<DragaliaResult> PreExec([FromHeader(Name = "SID")] string sessionId)
+    public async Task<DragaliaResult> PreExec(
+        [FromHeader(Name = Headers.SessionId)] string sessionId
+    )
     {
         IEnumerable<AtgenRedoableSummonResultUnitList> summonResult =
             await summonService.GenerateRedoableSummonResult();
@@ -75,7 +84,7 @@ public class RedoableSummonController(
     [HttpPost]
     [Route("fix_exec")]
     public async Task<DragaliaResult> FixExec(
-        [FromHeader(Name = "SID")] string sessionId,
+        [FromHeader(Name = Headers.SessionId)] string sessionId,
         CancellationToken cancellationToken
     )
     {
@@ -99,16 +108,23 @@ public class RedoableSummonController(
         );
         prologueStory.State = StoryState.Read;
 
-        IEnumerable<(Charas id, bool isNew)> repositoryCharaOuput = await unitRepository.AddCharas(
-            cachedResult.Where(x => x.EntityType == EntityTypes.Chara).Select(x => (Charas)x.Id)
+        List<Dragons> dragonList = cachedResult
+            .Where(x => x.EntityType == EntityTypes.Dragon)
+            .Select(x => (Dragons)x.Id)
+            .ToList();
+
+        List<Charas> charaList = cachedResult
+            .Where(x => x.EntityType == EntityTypes.Chara)
+            .Select(x => (Charas)x.Id)
+            .ToList();
+
+        IEnumerable<(Charas id, bool isNew)> repositoryCharaOuput = await unitService.AddCharas(
+            charaList
         );
 
-        IEnumerable<(Dragons Id, bool IsNew)> repositoryDragonOutput =
-            await unitRepository.AddDragons(
-                cachedResult
-                    .Where(x => x.EntityType == EntityTypes.Dragon)
-                    .Select(x => (Dragons)x.Id)
-            );
+        IEnumerable<(Dragons Id, bool IsNew)> repositoryDragonOutput = await unitService.AddDragons(
+            dragonList
+        );
 
         UpdateDataList updateData = await updateDataService.SaveChangesAsync(cancellationToken);
 
